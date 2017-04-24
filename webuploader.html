@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="/vender/webuploader/dist/webuploader.css">
+    <script src="/jquery.js"></script>
+    <script src="/vender/webuploader/dist/webuploader.js"></script>
+</head>
+<body>
+
+<div id="picker"></div>
+<input type="button" value="开始上传" id="uploadBtn"/>
+<div id="preview"></div>
+<script>
+    var uploader = new WebUploader.Uploader({
+        fileVal: 'file',
+        fileNumLimit: 3,
+        swf: '/vender/webuploader/dist/Uploader.swf',
+        server: '/api/upload.php',
+        pick: {
+            id: '#picker',
+            innerHTML: '上传头像',
+            multiple: true
+        },
+        auto: false,
+        method: 'POST',
+        resize: false,
+        formData: {
+            uid: '123'
+        },
+        duplicate: true
+    });
+
+    uploader.onBeforeFileQueued = function (file) {
+        //console.log(file);
+    };
+
+    uploader.onFileQueued = function (file) {
+        //console.log(file);
+    };
+
+    uploader.on('uploadSuccess', function (file, response) {
+        var $img = $('<img src="'+ response.url +'"/>');
+        $("#preview").append($img);
+    });
+
+    $('#uploadBtn').on('click', function () {
+        uploader.upload();
+    });
+</script>
+</body>
+</html>
