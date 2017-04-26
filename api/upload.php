@@ -9,30 +9,35 @@ if (!is_dir(ATTACHMENTS_PATH)) {
     mkdir(ATTACHMENTS_PATH);
 }
 
-if (is_array($_FILES['file']['error'])) {
+$field = $_FILES['file'];
+if (is_array($field['error'])) {
     //多文件上传
-    foreach ($_FILES['file']['error'] as $key => $error) {
-        $error = $_FILES['file']['error'][$key];
-        $tmp_name = $_FILES['file']['tmp_name'][$key];
-        $name = $_FILES['file']['name'][$key];
-        $size = $_FILES['file']['size'][$key];
-        $type = $_FILES['file']['type'][$key];
+    foreach ($field['error'] as $key => $error) {
+        $error = $field['error'][$key];
+        $tmp_name = $field['tmp_name'][$key];
+        $name = $field['name'][$key];
+        $size = $field['size'][$key];
+        $type = $field['type'][$key];
         upload($error, $tmp_name, $name, $size, $type);
     }
 } else {
     //单文件上传
-    $error = $_FILES['file']['error'];
-    $tmp_name = $_FILES['file']['tmp_name'];
-    $name = $_FILES['file']['name'];
-    $size = $_FILES['file']['size'];
-    $type = $_FILES['file']['type'];
+    $error = $field['error'];
+    $tmp_name = $field['tmp_name'];
+    $name = $field['name'];
+    $size = $field['size'];
+    $type = $field['type'];
     upload($error, $tmp_name, $name, $size, $type);
 }
 
 function upload($error, $tmp_name, $name, $size, $type)
 {
     if ($error > 0) {
-        echo '上传失败<br/>';
+        $r = array(
+            "error" => 1,
+            "message" => '上传失败'
+        );
+        echo json_encode($r);
         return;
     }
 
@@ -42,9 +47,14 @@ function upload($error, $tmp_name, $name, $size, $type)
     if (is_uploaded_file($tmp_name)) {
         $src = uniqid() . $suffix;
         if (!move_uploaded_file($tmp_name, ATTACHMENTS_PATH . $src)) {
-            echo '上传失败<br/>';
+            $r = array(
+                "error" => 1,
+                "message" => '上传失败'
+            );
+            echo json_encode($r);
         } else {
             $r = array(
+                "error" => 0,
                 "url" => '/attachments/' . $src
             );
             echo json_encode($r);
@@ -63,6 +73,6 @@ function upload($error, $tmp_name, $name, $size, $type)
  * 'channels'=>给出的是图像的通道值，RGB 图像默认是 3
  * 'mime'=>类似于'image/jpeg'的MIME信息
  */
-//$source_info = getimagesize($_FILES['imgFile']['tmp_name']);
+//$source_info = getimagesize($field['tmp_name']);
 
 
