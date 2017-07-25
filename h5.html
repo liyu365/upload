@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+    <title>移动端图片压缩上传demo</title>
+    <style>
+        #fileInput {
+            display: none;
+        }
+    </style>
+    <script src="/vendor/megapix-image.js"></script>
+</head>
+<body>
+<button id="upload_btn">上传图片</button>
+<input type="file" id="fileInput" multiple>
+<!--input标签可以加入 accept="image/*" 但是会让启动变得很慢-->
+
+<script>
+    function dataURItoBlob(dataURI) {
+        // convert base64 to raw binary data held in a string
+        // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
+        var byteString = atob(dataURI.split(',')[1]);
+
+        // separate out the mime component
+        var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
+
+        // write the bytes of the string to an ArrayBuffer
+        var ab = new ArrayBuffer(byteString.length);
+
+        // create a view into the buffer
+        var ia = new Uint8Array(ab);
+
+        // set the bytes of the buffer to the correct values
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+
+        // write the ArrayBuffer to a blob, and you're done
+        var blob = new Blob([ab], {type: mimeString});
+        return blob;
+    }
+
+    function createXMLHttpRequest() {
+        var xhr;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else if (window.ActiveXObject) {
+            try {
+                xhr = new ActiveXObject("Msxml2.XMLHTTP");
+            } catch (e) {
+                try {
+                    xhr = new ActiveXObject("Microsoft.XMLHTTP");
+                } catch (e) {
+                }
+            }
+        }
+        return xhr;
+    }
+
+    function send(blob) {
+        var formData = new FormData();
+        formData.append('file', blob, 'pic.jpg');
+        var xhr = createXMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) {
+                if (xhr.status == 200 || xhr.status == 304) {
+                    var result = xhr.responseText;
+                    result = eval('(' + result + ')');
+                    console.log(result);
+                }
+            }
+        };
+        xhr.upload.addEventListener("progress", function (e) {
+            var percentComplete = Math.round(e.loaded * 100 / e.total);
+            console.log(percentComplete);
+        });
+        xhr.open("post", '/api/upload.php', true);
+        xhr.send(formData);
+    }
+
+    var fileInput = document.getElementById('fileInput');
+    rFilter = /^(?:image\/bmp|image\/cis\-cod|image\/gif|image\/ief|image\/jpeg|image\/jpeg|image\/jpeg|image\/pipeg|image\/png|image\/svg\+xml|image\/tiff|image\/x\-cmu\-raster|image\/x\-cmx|image\/x\-icon|image\/x\-portable\-anymap|image\/x\-portable\-bitmap|image\/x\-portable\-graymap|image\/x\-portable\-pixmap|image\/x\-rgb|image\/x\-xbitmap|image\/x\-xpixmap|image\/x\-xwindowdump)$/i;
+    fileInput.onchange = function () {
+        var files = fileInput.files;
+        var count = files.length;
+        console.log("共有" + count + "个文件");
+        for (var i = 0; i < count; i++) {
+            var file = files[i];
+            console.log("原图片大小", file.size);
+            if (!rFilter.test(file.type)) {
+                console.log("只能上传图片文件!");
+                continue;
+            }
+            (function (file) {
+                var mpObj = new MegaPixImage(file);
+                var resImg = document.createElement("img");
+                //通过传入的File对象，生成一个压缩后的DataURI，也就是base64格式的字符串
+                mpObj.render(resImg, {maxWidth: 800, maxHeight: 800, quality: 0.9}, function () {
+                    var blob = dataURItoBlob(resImg.src); //把DataURI转换成Bold对象
+                    document.body.appendChild(resImg);
+                    send(blob);
+                });
+            })(file);
+        }
+    };
+
+    var upload_btn = document.getElementById('upload_btn');
+    upload_btn.onclick = function () {
+        fileInput.click();
+    }
+</script>
+</body>
+</html>
