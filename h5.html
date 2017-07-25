@@ -95,6 +95,8 @@
             }
             (function (file) {
                 var mpObj = new MegaPixImage(file);
+                //生成一个img元素用来承载结果，也可以生成一个canvas元素用来承载结果。注意这个插件是用元素的tagName来区分承载元素的，
+                //有的浏览器createElement出来的元素是没有tagName属性的，此时要去插件的源码去修改区分承载元素的规则。
                 var resImg = document.createElement("img");
                 //通过传入的File对象，生成一个压缩后的DataURI，也就是base64格式的字符串
                 mpObj.render(resImg, {maxWidth: 800, maxHeight: 800, quality: 0.9}, function () {
