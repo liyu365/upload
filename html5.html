@@ -9,14 +9,35 @@
         #fileInput {
             display: none;
         }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, .5);
+        }
+
+        .loading span {
+            margin: 40px auto;
+            width: 100px;
+            display: block;
+            top: 100px;
+            color: #fff;
+            text-align: center;
+        }
     </style>
     <script src="./vendor/megapix-image.js"></script>
+    <script src="./vendor/exif.js"></script>
 </head>
 <body>
-本地压缩并生成缩略图
+本地压缩并生成预览图
 <button id="upload_btn">上传图片</button>
 <input type="file" id="fileInput" multiple>
 <!--input标签可以加入 accept="image/*" 但是会让启动变得很慢-->
+<div class="loading"><span>本地压缩中<br/>请勿关闭</span></div>
 
 <script>
     function dataURItoBlob(dataURI) {
@@ -81,32 +102,61 @@
         xhr.send(formData);
     }
 
+    var loading = document.querySelector('.loading');
+    var pending_count = 0;
     var fileInput = document.getElementById('fileInput');
     var rFilter = /^(?:image\/bmp|image\/cis\-cod|image\/gif|image\/ief|image\/jpeg|image\/jpeg|image\/jpeg|image\/pipeg|image\/png|image\/svg\+xml|image\/tiff|image\/x\-cmu\-raster|image\/x\-cmx|image\/x\-icon|image\/x\-portable\-anymap|image\/x\-portable\-bitmap|image\/x\-portable\-graymap|image\/x\-portable\-pixmap|image\/x\-rgb|image\/x\-xbitmap|image\/x\-xpixmap|image\/x\-xwindowdump)$/i;
     fileInput.onchange = function () {
-        var files = fileInput.files;
-        var count = files.length;
-        console.log("共有" + count + "个文件");
-        for (var i = 0; i < count; i++) {
-            var file = files[i];
-            console.log("原图片大小", file.size);
-            if (!rFilter.test(file.type)) {
-                console.log("只能上传图片文件!");
-                continue;
+        loading.style.display = 'block';
+        setTimeout(function () {
+            var files = fileInput.files;
+            var count = files.length;
+            console.log("共有" + count + "个文件");
+            if (count > 0) {
+                pending_count = count;
+            } else {
+                loading.style.display = 'none';
+                return;
             }
-            (function (file) {
-                var mpObj = new MegaPixImage(file);
-                //生成一个img元素用来承载结果，也可以生成一个canvas元素用来承载结果。注意这个插件是用元素的tagName来区分承载元素的，
-                //有的浏览器createElement出来的元素是没有tagName属性的，此时要去插件的源码去修改区分承载元素的规则。
-                var resImg = document.createElement("img");
-                //通过传入的File对象，生成一个压缩后的DataURI，也就是base64格式的字符串
-                mpObj.render(resImg, {maxWidth: 800, maxHeight: 800, quality: 0.9}, function () {
-                    var blob = dataURItoBlob(resImg.src); //把DataURI转换成Bold对象
-                    document.body.appendChild(resImg);
-                    send(blob);
-                });
-            })(file);
-        }
+            for (var i = 0; i < count; i++) {
+                var file = files[i];
+                console.log("原图片大小", file.size);
+                if (!rFilter.test(file.type)) {
+                    console.log("只能上传图片文件!");
+                    pending_count = pending_count - 1;
+                    if (pending_count == 0) {
+                        loading.style.display = 'none';
+                    }
+                    continue;
+                }
+                (function (file) {
+                    EXIF.getData(file, function () {
+                        var Orientation = -100;
+                        Orientation = EXIF.getTag(this, 'Orientation');
+                        var mpObj = new MegaPixImage(file);
+                        //生成一个img元素用来承载结果，也可以生成一个canvas元素用来承载结果。注意这个插件是用元素的tagName来区分承载元素的，
+                        //有的浏览器createElement出来的元素是没有tagName属性的，此时要去插件的源码去修改区分承载元素的规则。
+                        var resImg = document.createElement("img");
+                        //alert('此时的Orientation为' + Orientation);
+                        //通过传入的File对象，生成一个压缩后的DataURL，也就是base64格式的字符串
+                        mpObj.render(resImg, {
+                            maxWidth: 400,
+                            maxHeight: 400,
+                            quality: 0.9,
+                            orientation: Orientation
+                        }, function () {
+                            var blob = dataURItoBlob(resImg.src); //把DataURL转换成Bold对象
+                            document.body.appendChild(resImg);
+                            pending_count = pending_count - 1;
+                            if (pending_count == 0) {
+                                loading.style.display = 'none';
+                            }
+                            send(blob);
+                        });
+                    });
+                })(file);
+            }
+        }, 200);
     };
 
     var upload_btn = document.getElementById('upload_btn');
